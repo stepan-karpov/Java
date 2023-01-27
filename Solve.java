@@ -1,234 +1,169 @@
 import java.util.ArrayList;
 import java.util.Scanner;
 import java.util.Collections;
+import java.util.Random;
 
 public class Solve {
-  static public class AVLTree {
-    public class Node {
-      Long value = Long.valueOf(0);
-      Integer left_child = -1;
-      Integer right_child = -1;
-      Integer size = 0;
-      Integer balance = 0;
-      public Node(Long value) {
-        this.value = value;
-        this.size = 1;
-      }
+  static public class CartesianTree {
+    Node root = null;
+    static Integer kNoSon = 1000000001;
+    static public class Node {
+      Integer value;
+      Integer key;
+      Node left_son = null;
+      Node right_son = null;
       public Node(Integer value) {
-        this.value = Long.valueOf(value);
-        this.size = 1;
+        this.value = value;
+        Random rand = new Random();
+        key = rand.nextInt(100000);
       }
     }
-  
-    ArrayList<Node> tree = new ArrayList<Node>();
-  
-    public Boolean Find(Integer value) {
-      return Find(Long.valueOf(value));
-    }
-
-    private Integer GetBalance(Integer x) {
-      if (x == -1) {
-        return 0;
+    
+    static public class Splitter {
+      Node left = null;
+      Node right = null;
+      public Splitter(Node left, Node right) {
+        this.left = left;
+        this.right = right;
       }
-      Node cur_x = tree.get(x);
-      Integer left_child_size = 0;
-      Integer right_child_size = 0;
-      if (cur_x.left_child != -1) {
-        left_child_size = tree.get(cur_x.left_child).size;
+    }
+
+    // returns Splitter:
+    // left - root of a tree where all elements are < value
+    // right - root of a tree where all elements are => value
+    private Splitter Split(Node x, Integer value) {
+      if (x == null) {
+        return new Splitter(null, null);
       }
-      if (cur_x.right_child != -1) {
-        right_child_size = tree.get(cur_x.right_child).size;
+      if (x.value < value) {
+        Splitter current_splitter = Split(x.right_son, value);
+        x.right_son = current_splitter.left;
+        return new Splitter(x, current_splitter.right);
       }
-      return left_child_size - right_child_size;
+      Splitter current_splitter = Split(x.left_son, value);
+      x.left_son = current_splitter.right;
+      return new Splitter(current_splitter.left, x);
     }
 
-    private void SmallLeftRotation(Integer x) {
-      Node cur_x = tree.get(x);
-      Integer y = cur_x.left_child;
-      Node cur_y = tree.get(y);
-      Integer A = cur_y.left_child;
-      Integer B = cur_y.right_child;
-      Integer C = cur_x.right_child;
-      Collections.swap(tree, x, y);
-      Integer tmp = x; x = y; y = tmp;
-      cur_x = tree.get(x);
-      cur_y = tree.get(y);
-      cur_y.left_child = A;
-      cur_y.right_child = x;
-      cur_x.left_child = B;
-      cur_x.right_child = C;
-      Update(x);
-      Update(y);
+    private Node Merge(Node left, Node right) {
+      if (left == null) {
+        return right;
+      }
+      if (right == null) {
+        return left;
+      }
+      if (right.key > left.key) {
+        right.left_son = Merge(left, right.left_son);
+        return right;
+      }
+      left.right_son = Merge(left.right_son, right);
+      return left;
     }
 
-    private void SmallRightRotation(Integer x) {
-      Node cur_x = tree.get(x);
-      Integer y = cur_x.right_child;
-      Node cur_y = tree.get(y);
-      Integer A = cur_x.left_child;
-      Integer B = cur_y.left_child;
-      Integer C = cur_y.right_child;
-      Collections.swap(tree, x, y);
-      Integer tmp = x; x = y; y = tmp;
-      cur_x = tree.get(x);
-      cur_y = tree.get(y);
-      cur_y.left_child = x;
-      cur_y.right_child = C;
-      cur_x.left_child = A;
-      cur_x.right_child = B;
-      Update(x);
-      Update(y);
-    }
-
-    private void Rebuild(Integer x) {
-      Node cur_x = tree.get(x);
-      Integer balance = GetBalance(x);
-      if (Math.abs(balance) != 2) {
+    public void Insert(Integer value) {
+      if (Find(value)) {
         return;
       }
-      if (balance == -2) {
-        if (GetBalance(cur_x.right_child) != 1) {
-          SmallRightRotation(x);
-        } else {
-          SmallLeftRotation(cur_x.right_child);
-          SmallRightRotation(x);
-        }
-      } else {
-        if (GetBalance(cur_x.left_child) != -1) {
-          SmallLeftRotation(x);
-        } else {
-          SmallRightRotation(cur_x.left_child);
-          SmallLeftRotation(x);
-        }
-      }
+      Splitter current_splitter = Split(root, value);
+      Node new_element = new Node(value);
+
+      current_splitter.right = Merge(new_element, current_splitter.right);
+      root = Merge(current_splitter.left, current_splitter.right);
     }
-  
-    private void Update(Integer x) {
-      Integer left_size = 0;
-      Integer right_size = 0;
-      Node cur_x = tree.get(x);
-      if (cur_x.left_child != -1) {
-        left_size = tree.get(cur_x.left_child).size;
+
+    private Boolean Find(Node root, Integer value) {
+      if (root == null) {
+        return false;
       }
-      if (cur_x.right_child != -1) {
-        right_size = tree.get(cur_x.right_child).size;
-      }
-      cur_x.size = left_size + right_size + 1;
-      cur_x.balance = left_size - right_size;
-    }
-  
-    private Boolean Find(Long value, Integer x) {
-      Node cur_x = tree.get(x);
-      if (value == cur_x.value) {
+      if (root.value == value) {
         return true;
       }
-      if (value < cur_x.value) {
-        if (cur_x.left_child == -1) {
-          return false;
+      if (root.value < value) {
+        return Find(root.right_son, value);
+      }
+      return Find(root.left_son, value);
+    }
+
+    public Boolean Find(Integer value) {
+      return Find(root, value);
+    }
+
+    public void Delete(Integer value) {
+      if (!Find(value)) {
+        return;
+      }
+      Splitter splitter1 = Split(root, value);
+      Splitter splitter2 = Split(splitter1.right, value + 1);
+
+      root = Merge(splitter1.left, splitter2.right);
+    }
+
+    private Integer UpperBound(Node root, Integer value, Boolean reverse) {
+      if (!reverse) {
+        if (root == null) {
+          return kNoSon;
         }
-        return Find(value, cur_x.left_child);
-      }
-      if (cur_x.right_child == -1) {
-        return false;
-      }
-      return Find(value, cur_x.right_child);
-    }
-  
-    public Boolean Find(Long value) {
-      if (tree.isEmpty()) {
-        return false;
-      }
-      return Find(value, 0);
-    }
-  
-    private void Add(Long value, Integer x) {
-      Node cur_x = tree.get(x);
-      if (cur_x.value == value) {
-        return;
-      }
-      if (value < cur_x.value) {
-        if (cur_x.left_child == -1) {
-          tree.add(new Node(value));
-          cur_x.left_child = tree.size() - 1;
-          Update(x);
-          Rebuild(x);
-          return;
+        if (root.value > value) {
+          return Math.min(root.value, UpperBound(root.left_son, value, reverse));
         }
-        Add(value, cur_x.left_child);
-        Update(x);
-        Rebuild(x);
-        return;
+        return UpperBound(root.right_son, value, reverse);
       }
-      if (cur_x.right_child == -1) {
-        tree.add(new Node(value));
-        cur_x.right_child = tree.size() - 1;
-        Update(x);
-        Rebuild(x);
-        return;
+      if (root == null) {
+        return kNoSon;
       }
-      Add(value, cur_x.right_child);
-      Update(x);
-      Rebuild(x);
-    }
-  
-    public void Add(Integer value) {
-      Add(Long.valueOf(value));
-    }
-  
-    public void Add(Long value) {
-      if (tree.isEmpty()) {
-        tree.add(new Node(value));
-        return;
+      if (root.value < value) {
+        Integer ans = UpperBound(root.right_son, value, reverse);
+        if (ans == kNoSon) {
+          return root.value;
+        }
+        return Math.max(root.value, ans);
       }
-      Add(value, 0);
+      return UpperBound(root.left_son, value, reverse);
     }
-  
-    private Long Next(Long value, Integer x) {
-      if (x == -1) {
-        return Long.valueOf(-1);
-      }
-      Node cur_x = tree.get(x);
-      if (cur_x.value >= value) {
-        Long new_ans = Next(value, cur_x.left_child);
-        return (new_ans == -1) ? cur_x.value : new_ans;
-      }
-      return Next(value, cur_x.right_child);
+
+    // returns first element > value if reverse = false
+    // returns first element < value if reverse = true
+    public Integer UpperBound(Integer value, Boolean reverse) {
+      return UpperBound(root, value, reverse);
     }
-  
-    public Long Next(Integer value) {
-      return Next(Long.valueOf(value));
-    }
-  
-    public Long Next(Long value) {
-      if (tree.isEmpty()) {
-        return Long.valueOf(-1);
-      }
-      return Next(value, 0);
-    }
+
   }
+
   public static void main(String[] args) {
     Scanner sc = new Scanner(System.in);
-    Long MOD = Long.valueOf(1000000000);
     Integer n;
-    AVLTree a = new AVLTree();
+    CartesianTree a = new CartesianTree();
 
-    n = sc.nextInt();
-    Long y = Long.valueOf(0);
-
-    for (int i = 0; i < n; ++i) {
-      String cmd;
-      cmd = sc.next();
-      if (cmd.equals("+")) {
-        Long value = sc.nextLong();
-        a.Add((value + y) % MOD);
-        // System.out.println("size: " + a.tree.get(0).size);
-        y = Long.valueOf(0);
-      } else {
-        Long value = sc.nextLong();
-        y = a.Next(value);
-        System.out.println(y);
+    while (sc.hasNextLine()) {
+      String cmd = sc.next();
+      Integer value = sc.nextInt();
+      if (cmd.compareTo("insert") == 0) {
+        a.Insert(value);
+      } else if (cmd.compareTo("exists") == 0) {
+        if (a.Find(value)) {
+          System.out.println("true");
+        } else {
+          System.out.println("false");
+        }
+      } else if (cmd.compareTo("delete") == 0) {
+        a.Delete(value);
+      } else if (cmd.compareTo("next") == 0) {
+        Integer ans = a.UpperBound(value, false);
+        if (ans == a.kNoSon) {
+          System.out.println("none");
+        } else {
+          System.out.println(ans);
+        }
+      } else if (cmd.compareTo("prev") == 0) {
+        Integer ans = a.UpperBound(value, true);
+        if (ans == a.kNoSon) {
+          System.out.println("none");
+        } else {
+          System.out.println(ans);
+        }
       }
     }
-
   }
+    
+
 }
